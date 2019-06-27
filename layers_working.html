@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<!-- choose month/year? -->
+<!-- click on state to show county view? (how to get out?) (double click?)-->
+<!-- loading issues -->
+    <!-- no loading pane-->
+    <!-- counties load first -->
+    <!-- make it work in IE/chrome -->
+    <!-- weird xml parsing errors? -->
+    <!-- CORS -->
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="shortcut icon" type="image/x-icon" href="docs/images/favicon.ico" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css" integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ==" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js" integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og==" crossorigin=""></script>
+<script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+<link rel="stylesheet" href="L.Control.ZoomMin.css" media="screen">
+<script src="L.Control.ZoomMin.js"></script>
+<style>
+html, body {
+    height: 95%;
+    margin: 5px;
+}
+#map {
+    width: 100%;
+    height: 100%;
+}
+.info {
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+.info h4 {
+    margin: 0 0 5px;
+    color: #777;
+}
+.legend {
+    line-height: 18px;
+    color: #555;
+}
+.legend i {
+    width: 18px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.7;
+}
+</style>
+</head>
+<body>
+<div id='map'></div>
+<script type="text/javascript">
+	var mapboxAccessToken = 'pk.eyJ1IjoiaGlpbXdhbGtlciIsImEiOiJjanY1bXNlNXQzM2F2NGRsamRpcnFtbXFhIn0.C3mhyg998yANLDexb2115Q';
+    var mbUrl='https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=' + mapboxAccessToken;
+	//var basemap = L.tileLayer(mbUrl, {id: 'mapbox.asdf'}); //to disable (break) names 
+	var basemap = L.tileLayer(mbUrl, {id: 'mapbox.light'}); //to enable names
+    var xlayers={};
+    var lines={};
+    var map = L.map('map', {
+		center: [39, -97],
+		zoom: 5,
+        minZoom:4,
+        zoomControl: false,
+		layers: [basemap]
+	});
+    map.addControl(new L.Control.ZoomMin())
+    var od_dic={}; // key: fips code, value: predicted overdoses for states AND counties
+    $.ajax({
+      url: 'od-states.json', // this is the basic json file we get the state level OD info from
+      async: false,
+      dataType: 'json',
+      success: function(data) {
+        $.each(data, function(key, val) {
+          od_dic[key]=val;    
+        });
+      }
+    });    
+        
+    $.ajax({
+      url: 'od-counties.json',// this is the basic json file we get the county level OD info from
+      async: false,
+      dataType: 'json',
+      success: function(data) {
+        $.each(data, function(key, val) {
+          od_dic[key]=val;    
+        });
+      }
+    });
+    var m=0
+    for (var key in od_dic){
+        var value=od_dic[key];
+        m=Math.max(m,value);
+    }
+    var a=Math.ceil(m/15);
+    var grades=[0,a*2,a*3,a*4,a*5,a*6,a*7]
+    $.getJSON('states.json', function(s){
+        var statesLayer = L.geoJSON(s, {
+            style: stateStyle,
+            onEachFeature: stateOnEachFeature
+        }).addTo(map);
+        xlayers['States']=statesLayer;
+        
+    });
+    $.getJSON('states.json', function(s){
+        states = s;
+        L.geoJSON(states, {
+            'style': function(feature){
+                return {
+                    'fill': false,
+                    color: 'gray',
+                    dashArray: ''
+                };
+            }
+        }).addTo(map);
+    });
+    
+    $.getJSON('counties.json', function(s){
+        var countiesLayer = L.geoJSON(s, {
+            style: countyStyle,
+            onEachFeature: countyOnEachFeature
+        }).addTo(map);
+        xlayers['Counties']=countiesLayer;
+        L.control.layers(xlayers).addTo(map);
+    });
+    
+    function getColor(d) {
+        return d > grades[6] ? '#A0092A' :
+               d > grades[5]  ? '#DD5D4E' :
+               d > grades[4]  ? '#F89D80' :
+               d > grades[3]  ? '#F5CAB7' :
+               d > grades[2]   ? '#CFD9E9' :
+               d > grades[1]   ? '#82AAFD' :
+               d > grades[0]   ? '#3A4DC3' : 
+                          '#000000'; // if we see this color, we have a negative number in our data (black color is indicitive of error)
+    }
+
+    function stateHighlightFeature(e) {
+        var layer = e.target;
+
+        layer.setStyle({
+            weight: 5,
+            color: '#666',
+            dashArray: '',
+            fillOpacity: 0.7
+        });
+
+        if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+            layer.bringToFront();
+        }
+        info.stateUpdate(layer.feature);
+    }
+
+    function stateResetHighlight(e) {
+        xlayers['States'].resetStyle(e.target);
+        info.stateUpdate();
+    }
+
+    function zoomToFeature(e) {
+        map.fitBounds(e.target.getBounds());
+    }
+
+    function stateOnEachFeature(feature, layer) {
+        layer.on({
+            mouseover: stateHighlightFeature,
+            mouseout: stateResetHighlight,
+            click: zoomToFeature
+        });
+    }
+
+    function stateStyle(feature) {
+        var x=feature.id;
+        return {
+            fillColor: getColor(od_dic[x]),
+            weight: 2,
+            opacity: 1,
+            color: 'white',
+            dashArray: '3',
+            fillOpacity: 0.5
+        };
+    } 
+    
+    function countyHighlight(e) {
+        var layer = e.target;
+
+        layer.setStyle({
+            weight: 2,
+            color: '#666',
+            dashArray: '',
+            fillOpacity: 0.5
+        });
+
+        if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+            layer.bringToFront();
+        }
+        info.countyUpdate(layer.feature);
+    }
+
+    function countyResetHighlight(e) {
+        xlayers['Counties'].resetStyle(e.target);
+        info.countyUpdate();
+    }
+
+
+    function countyOnEachFeature(feature, layer) {
+        layer.on({
+            mouseover: countyHighlight,
+            mouseout: countyResetHighlight,
+            click: zoomToFeature
+        });
+    }
+    
+    function countyStyle(feature) {
+        var x=feature.properties.STATE+feature.properties.COUNTY;
+        return {
+            fillColor: getColor(od_dic[x]),
+            weight: 1,
+            opacity: 1,
+            color: 'white',
+            dashArray: '3',
+            fillOpacity: 0.6
+        };
+    } 
+var info = L.control();
+
+info.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
+    this.stateUpdate();
+    return this._div;
+};
+
+// method that we will use to update the control based on feature properties passed
+info.stateUpdate = function (props) {
+    this._div.innerHTML = '<h4>US Overdose Rates</h4>' +  (props ?
+        '<b>' + props.properties.name + '</b><br />' + od_dic[props.id] + ' overdoses <br>/100,000 people per year'
+        : 'Hover over a state');
+};
+
+info.countyUpdate = function (props) {
+    this._div.innerHTML = '<h4>US Overdose Rates</h4>' +  (props ?
+        '<b>' + props.properties.NAME + '</b><br />' + od_dic[props.properties.STATE+props.properties.COUNTY] + ' overdoses <br>/100,000 people per year' //  var x=feature.properties.STATE+feature.properties.COUNTY;
+        : 'Hover over a state');
+};
+
+info.addTo(map);
+
+
+var legend = L.control({position: 'bottomright'});
+legend.onAdd = function (map) {
+
+    var div = L.DomUtil.create('div', 'info legend'),
+        labels = [];
+
+    // loop through our density intervals and generate a label with a colored square for each interval
+    for (var i = 0; i < grades.length; i++) {
+        div.innerHTML +=
+            '<i style="background:' + getColor(grades[i] + 1) + '"></i> ' +
+            grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
+    }
+
+    return div;
+};
+legend.addTo(map);
+</script>
+</body>
+</html>

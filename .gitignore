@@ -1,0 +1,11 @@
+trash/*
+*bak
+*py
+names-od-states.json
+*csv
+
+proximate/*
+saved_examples/*
+tmp*
+
+leaflet-zoom-min/*
