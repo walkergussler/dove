@@ -6,7 +6,6 @@
     <!-- counties load first -->
     <!-- make it work in IE/chrome -->
     <!-- weird xml parsing errors? -->
-    <!-- CORS -->
 <html>
 <head>
 <meta charset="utf-8" />
@@ -54,21 +53,21 @@ html, body {
 <body>
 <div id='map'></div>
 <script type="text/javascript">
-	var mapboxAccessToken = 'pk.eyJ1IjoiaGlpbXdhbGtlciIsImEiOiJjanY1bXNlNXQzM2F2NGRsamRpcnFtbXFhIn0.C3mhyg998yANLDexb2115Q';
-    var mbUrl='https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=' + mapboxAccessToken;
-	//var basemap = L.tileLayer(mbUrl, {id: 'mapbox.asdf'}); //to disable (break) names 
-	var basemap = L.tileLayer(mbUrl, {id: 'mapbox.light'}); //to enable names
-    var xlayers={};
-    var lines={};
-    var map = L.map('map', {
-		center: [39, -97],
-		zoom: 5,
-        minZoom:4,
-        zoomControl: false,
-		layers: [basemap]
-	});
+	var mapboxAccessToken = 'pk.eyJ1IjoiaGlpbXdhbGtlciIsImEiOiJjanY1bXNlNXQzM2F2NGRsamRpcnFtbXFhIn0.C3mhyg998yANLDexb2115Q',
+        mbUrl='https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=' + mapboxAccessToken,
+        //basemap = L.tileLayer(mbUrl, {id: 'mapbox.asdf'}), //to disable (break) names 
+	    basemap = L.tileLayer(mbUrl, {id: 'mapbox.light'}), //to enable names
+        xlayers={},
+        data_period='year', // change this to month if using monthly data (parse from filename?)
+        map = L.map('map', {
+            center: [39, -97],
+            zoom: 5,
+            minZoom:4,
+            zoomControl: false,
+            layers: [basemap]
+        }),
+        od_dic={}; // key: fips code, value: predicted overdoses for states AND counties
     map.addControl(new L.Control.ZoomMin())
-    var od_dic={}; // key: fips code, value: predicted overdoses for states AND counties
     $.ajax({
       url: 'od-states.json', // this is the basic json file we get the state level OD info from
       async: false,
@@ -97,17 +96,11 @@ html, body {
     }
     var a=Math.ceil(m/15);
     var grades=[0,a*2,a*3,a*4,a*5,a*6,a*7]
-    $.getJSON('states.json', function(s){
-        var statesLayer = L.geoJSON(s, {
-            style: stateStyle,
-            onEachFeature: stateOnEachFeature
-        }).addTo(map);
-        xlayers['States']=statesLayer;
-        
-    });
-    $.getJSON('states.json', function(s){
-        states = s;
-        L.geoJSON(states, {
+
+
+    
+    $.getJSON('states_reduced.json', function(s){
+        L.geoJSON(s, {
             'style': function(feature){
                 return {
                     'fill': false,
@@ -116,18 +109,25 @@ html, body {
                 };
             }
         }).addTo(map);
+        var statesLayer = L.geoJSON(s, {
+            style: style_state,
+            onEachFeature: on_each_feature_state
+        }).addTo(map);
+        xlayers['States']=statesLayer;
+        <!-- L.control.layers(xlayers).addTo(map); -->
     });
-    
-    $.getJSON('counties.json', function(s){
+
+    $.getJSON('counties_reduced.json', function(s){
         var countiesLayer = L.geoJSON(s, {
-            style: countyStyle,
-            onEachFeature: countyOnEachFeature
+            style: style_county,
+            onEachFeature: on_each_feature_county
         }).addTo(map);
         xlayers['Counties']=countiesLayer;
         L.control.layers(xlayers).addTo(map);
     });
     
-    function getColor(d) {
+    
+    function get_color(d) {
         return d > grades[6] ? '#A0092A' :
                d > grades[5]  ? '#DD5D4E' :
                d > grades[4]  ? '#F89D80' :
@@ -138,7 +138,7 @@ html, body {
                           '#000000'; // if we see this color, we have a negative number in our data (black color is indicitive of error)
     }
 
-    function stateHighlightFeature(e) {
+    function highlight_feature_state(e) {
         var layer = e.target;
 
         layer.setStyle({
@@ -151,30 +151,38 @@ html, body {
         if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
             layer.bringToFront();
         }
-        info.stateUpdate(layer.feature);
+        info.update_state(layer.feature);
     }
 
-    function stateResetHighlight(e) {
+    function reset_highlight_state(e) {
         xlayers['States'].resetStyle(e.target);
-        info.stateUpdate();
+        <!-- xlayers['Counties'].resetStyle(e.target); -->
+        info.update_state();
     }
 
-    function zoomToFeature(e) {
+    function reset_highlight_county(e) {
+        <!-- xlayers['States'].resetStyle(e.target); -->
+        xlayers['Counties'].resetStyle(e.target);
+        info.update_state();
+    }
+
+    
+    function zoom_to_feature(e) {
         map.fitBounds(e.target.getBounds());
     }
 
-    function stateOnEachFeature(feature, layer) {
+    function on_each_feature_state(feature, layer) {
         layer.on({
-            mouseover: stateHighlightFeature,
-            mouseout: stateResetHighlight,
-            click: zoomToFeature
+            mouseover: highlight_feature_state,
+            mouseout: reset_highlight_state,
+            click: zoom_to_feature
         });
     }
 
-    function stateStyle(feature) {
+    function style_state(feature) {
         var x=feature.id;
         return {
-            fillColor: getColor(od_dic[x]),
+            fillColor: get_color(od_dic[x]),
             weight: 2,
             opacity: 1,
             color: 'white',
@@ -183,7 +191,7 @@ html, body {
         };
     } 
     
-    function countyHighlight(e) {
+    function highlight_county(e) {
         var layer = e.target;
 
         layer.setStyle({
@@ -196,27 +204,21 @@ html, body {
         if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
             layer.bringToFront();
         }
-        info.countyUpdate(layer.feature);
+        info.update_county(layer.feature);
     }
 
-    function countyResetHighlight(e) {
-        xlayers['Counties'].resetStyle(e.target);
-        info.countyUpdate();
-    }
-
-
-    function countyOnEachFeature(feature, layer) {
+    function on_each_feature_county(feature, layer) {
         layer.on({
-            mouseover: countyHighlight,
-            mouseout: countyResetHighlight,
-            click: zoomToFeature
+            mouseover: highlight_county,
+            mouseout: reset_highlight_county,
+            click: zoom_to_feature
         });
     }
     
-    function countyStyle(feature) {
+    function style_county(feature) {
         var x=feature.properties.STATE+feature.properties.COUNTY;
         return {
-            fillColor: getColor(od_dic[x]),
+            fillColor: get_color(od_dic[x]),
             weight: 1,
             opacity: 1,
             color: 'white',
@@ -224,46 +226,46 @@ html, body {
             fillOpacity: 0.6
         };
     } 
-var info = L.control();
+    var info = L.control();
 
-info.onAdd = function (map) {
-    this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
-    this.stateUpdate();
-    return this._div;
-};
+    info.onAdd = function (map) {
+        this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
+        this.update_state();
+        return this._div;
+    };
 
-// method that we will use to update the control based on feature properties passed
-info.stateUpdate = function (props) {
-    this._div.innerHTML = '<h4>US Overdose Rates</h4>' +  (props ?
-        '<b>' + props.properties.name + '</b><br />' + od_dic[props.id] + ' overdoses <br>/100,000 people per year'
-        : 'Hover over a state');
-};
+    // method that we will use to update the control based on feature properties passed
+    info.update_state = function (props) {
+        this._div.innerHTML = '<h4>US Overdose Rates</h4>' +  (props ?
+            '<b>' + props.name + '</b><br />' + od_dic[props.id] + ' overdoses <br>/100,000 people per '+data_period
+            : 'Hover over a state');
+    };
 
-info.countyUpdate = function (props) {
-    this._div.innerHTML = '<h4>US Overdose Rates</h4>' +  (props ?
-        '<b>' + props.properties.NAME + '</b><br />' + od_dic[props.properties.STATE+props.properties.COUNTY] + ' overdoses <br>/100,000 people per year' //  var x=feature.properties.STATE+feature.properties.COUNTY;
-        : 'Hover over a state');
-};
+    info.update_county = function (props) {
+        this._div.innerHTML = '<h4>US Overdose Rates</h4>' +  (props ?
+            '<b>' + props.properties.NAME + '</b><br />' + od_dic[props.properties.STATE+props.properties.COUNTY] + ' overdoses <br>/100,000 people per '+data_period //  var x=feature.properties.STATE+feature.properties.COUNTY;
+            : 'Hover over a state');
+    };
 
-info.addTo(map);
+    info.addTo(map);
 
 
-var legend = L.control({position: 'bottomright'});
-legend.onAdd = function (map) {
+    var legend = L.control({position: 'bottomright'});
+    legend.onAdd = function (map) {
 
-    var div = L.DomUtil.create('div', 'info legend'),
-        labels = [];
+        var div = L.DomUtil.create('div', 'info legend'),
+            labels = [];
 
-    // loop through our density intervals and generate a label with a colored square for each interval
-    for (var i = 0; i < grades.length; i++) {
-        div.innerHTML +=
-            '<i style="background:' + getColor(grades[i] + 1) + '"></i> ' +
-            grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
-    }
+        // loop through our density intervals and generate a label with a colored square for each interval
+        for (var i = 0; i < grades.length; i++) {
+            div.innerHTML +=
+                '<i style="background:' + get_color(grades[i] + .01) + '"></i> ' +
+                grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
+        }
 
-    return div;
-};
-legend.addTo(map);
+        return div;
+    };
+    legend.addTo(map);
 </script>
 </body>
 </html>

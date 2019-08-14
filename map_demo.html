@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<!-- click on state to show county view? (how to get out?) (double click?)-->
+<!-- no loading pane-->
+<!-- counties load first-->
+<!-- better memory efficiency -->
+<!-- make it work in IE? -->
+<!-- weird xml parsing complaint?-->
+<!-- better parsing? -->
+<!-- reduce repetition of functions, extra arguments -->
+<html>
+<head>
+<title>leaflet dove</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="shortcut icon" type="image/x-icon" href="docs/images/favicon.ico" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css" integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ==" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js" integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og==" crossorigin=""></script>
+<script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+<link rel="stylesheet" href="L.Control.ZoomMin.css" media="screen">
+<script src="L.Control.ZoomMin.js"></script>
+<style>
+html, body {
+    height: 100%;
+    margin: 5px;
+}
+#map {
+	width: 99%;
+	height: 99%;
+	border: 2px solid #2da0e2;
+}
+
+.info {
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+.info h4 {
+    margin: 0 0 5px;
+    color: #777;
+}
+.legend {
+    line-height: 18px;
+    color: #555;
+}
+.legend i {
+    width: 18px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.7;
+}
+.error {
+    color: #990000;
+}
+</style>
+</head>
+<body>
+<div id='map'></div>
+<a href="javascript:location.reload(true)">Make me a new map!</a>
+<script type="text/javascript">
+////////////////////////////////////////////////////////////////////////////////////////////////
+// SETUP
+////////////////////////////////////////////////////////////////////////////////////////////////
+var year_obs_json='od_states_year_obs.json',
+    year_pre_json='od_states_year_pre.json',
+    month_obs_json='od_states_month_obs.json',
+    month_pre_json='od_states_month_pre.json',            
+    counties_obs_json='od_counties_year_obs.json',
+    counties_pre_json='od_counties_year_pre.json',
+    month_pre_dic={}, 
+    year_obs_dic={}, 
+    month_obs_dic={}, 
+    year_pre_dic={}, 
+    county_obs_dic={}, 
+    county_pre_dic={}, 
+    mapboxAccessToken = 'pk.eyJ1IjoiaGlpbXdhbGtlciIsImEiOiJjanY1bXNlNXQzM2F2NGRsamRpcnFtbXFhIn0.C3mhyg998yANLDexb2115Q',
+    mbUrl='https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=' + mapboxAccessToken,
+    basemap = L.tileLayer(mbUrl, {id: 'mapbox.light'}), 
+    xlayers={},
+    map = L.map('map', {
+    center: [39, -97],
+    zoom: 5,
+    minZoom:4,
+    zoomControl: false,
+    layers: [basemap]
+});
+map.addControl(new L.Control.ZoomMin())
+////////////////////////////////////////////////////////////////////////////////////////////////
+// PARSING
+////////////////////////////////////////////////////////////////////////////////////////////////
+$.ajax({
+  url: year_obs_json,
+  async: false,
+  dataType: 'json',
+  success: function(data) {
+    $.each(data, function(key, val) {
+      year_obs_dic[key]=val;
+    });
+  }
+});
+$.ajax({
+  url: year_pre_json,
+  async: false,
+  dataType: 'json',
+  success: function(data) {
+    $.each(data, function(key, val) {
+      year_pre_dic[key]=val;    
+    });
+  }
+});
+$.ajax({
+  url: month_obs_json, 
+  async: false,
+  dataType: 'json',
+  success: function(data) {
+    $.each(data, function(key, val) {
+      month_obs_dic[key]=round(val*12,2);    
+    });
+  }
+});
+
+$.ajax({ 
+  url: month_pre_json, 
+  async: false,
+  dataType: 'json',
+  success: function(data) {
+    $.each(data, function(key, val) {
+      month_pre_dic[key]=round(val*12,2);
+    });
+  }
+});
+$.ajax({
+  url: counties_obs_json,
+  async: false,
+  dataType: 'json',
+  success: function(data) {
+    $.each(data, function(key, val) {
+      county_obs_dic[key]=val;    
+    });
+  }
+});
+$.ajax({
+  url: counties_pre_json,
+  async: false,
+  dataType: 'json',
+  success: function(data) {
+    $.each(data, function(key, val) {
+      county_pre_dic[key]=val;    
+    });
+  }
+});
+////////////////////////////////////////////////////////////////////////////////////////////////
+// LEGEND
+////////////////////////////////////////////////////////////////////////////////////////////////
+function get_grades(pre_v) {
+    var v=Array_Sort_Numbers(pre_v);
+    var grades=[0];
+    var points=[.15,.3,.45,.6,.75,.9];
+    for (var i=0; i<6; i++) {
+        var raw=Quartile(v,points[i]);
+        grades.push(round(raw,0));
+    }
+    return grades;
+}
+
+function Quartile(data, q) {
+  var pos = ((data.length) - 1) * q;
+  var base = Math.floor(pos);
+  var rest = pos - base;
+  if( (data[base+1]!==undefined) ) {
+    return data[base] + rest * (data[base+1] - data[base]);
+  } else {
+    return data[base];
+  }
+}
+function Array_Sort_Numbers(inputarray){
+  return inputarray.sort(function(a, b) {
+    return a - b;
+  });
+}
+
+function getColor(d) {
+    return d > grades[6] ? '#A0092A' :
+           d > grades[5]  ? '#DD5D4E' :
+           d > grades[4]  ? '#F89D80' :
+           d > grades[3]  ? '#F5CAB7' :
+           d > grades[2]   ? '#CFD9E9' :
+           d > grades[1]   ? '#82AAFD' :
+           d > grades[0]   ? '#3A4DC3' : 
+                      '#000000'; // if we see this color, we have a negative number in our data (black color is indicitive of error)
+}
+
+var v=[];
+for(var key in year_pre_dic) {
+    v.push(year_pre_dic[key]);
+}
+for(var key in month_pre_dic) {
+    v.push(month_pre_dic[key]);
+}
+for(var key in year_obs_dic) {
+    v.push(year_obs_dic[key]);
+}
+for(var key in month_obs_dic) {
+    v.push(month_obs_dic[key]);
+}
+for(var key in county_obs_dic) {
+    v.push(county_obs_dic[key]);
+}
+for(var key in county_pre_dic) {
+    v.push(county_pre_dic[key]);
+}
+var grades=get_grades(v)
+////////////////////////////////////////////////////////////////////////////////////////////////
+// DRAWING LINES, INPUTING DATA
+////////////////////////////////////////////////////////////////////////////////////////////////
+$.getJSON('states_reduced.json', function(s){
+    L.geoJSON(s, {// move up
+        'style': function(feature){
+            return {
+                'fill': false,
+                color: 'lightblue'
+            };
+        }
+    }).addTo(map);
+});
+
+$.getJSON('states_reduced.json', function(s){
+    
+    var year_obs_layer = L.geoJSON(s, {
+        style: style_year_obs,
+        onEachFeature: on_each_feature_year_obs
+    }).addTo(map);
+    xlayers['2017 observed state level']=year_obs_layer;
+    var year_pre_layer = L.geoJSON(s, {
+        style: style_year_pre,
+        onEachFeature: on_each_feature_year_pre
+    }).addTo(map);
+    xlayers['2018 predicted state level']=year_pre_layer;
+    var month_obs_layer = L.geoJSON(s, {
+        style: style_month_obs,
+        onEachFeature: on_each_feature_month_obs
+    }).addTo(map);
+    xlayers['Average 2019 monthly prediction']=month_obs_layer;
+    var month_pre_layer = L.geoJSON(s, {
+        style: style_month_pre,
+        onEachFeature: on_each_feature_month_pre
+    }).addTo(map);
+    xlayers['June 2019 prediction state level']=month_pre_layer;
+    <!-- L.control.layers(xlayers).addTo(map); -->
+});
+$.getJSON('counties_reduced.json', function(s){
+    var layer_obs = L.geoJSON(s, {
+        style: style_county_obs,
+        onEachFeature: on_each_feature_county_obs
+    }).addTo(map);
+    xlayers['2017 counties observed']=layer_obs;
+    var layer_pre = L.geoJSON(s, {
+        style: style_county_pre,
+        onEachFeature: on_each_feature_county_pre
+    }).addTo(map);
+    xlayers['2018 counties predicted']=layer_pre;
+    L.control.layers(xlayers).addTo(map);
+});
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+// HIGHLIGHTING FUNCTIONS
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+function highlight_year_obs(e) {
+    var layer = e.target;
+    layer.setStyle({
+        weight: 5,
+    });
+    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) 
+        layer.bringToFront();
+    info.update_year_obs(layer.feature);
+}
+
+function highlight_year_pre(e) {
+    var layer = e.target;
+    layer.setStyle({
+        weight: 5,
+    });
+    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge)
+        layer.bringToFront();
+    info.update_year_pre(layer.feature);
+}
+
+function highlight_month_obs(e) {
+    var layer = e.target;
+    layer.setStyle({
+        weight: 5,
+    });
+    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) 
+        layer.bringToFront();
+    info.update_month_obs(layer.feature);
+}
+
+function highlight_month_pre(e) {
+    var layer = e.target;
+    layer.setStyle({
+        weight: 5,
+    });
+    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge)
+        layer.bringToFront();
+    info.update_month_pre(layer.feature);
+}
+
+
+function highlight_county_pre(e) {
+    var layer = e.target;
+    layer.setStyle({
+        weight: 2,
+        color: '#666',
+        dashArray: '',
+        fillOpacity: 0.5
+    });
+    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge)
+        layer.bringToFront();
+    info.update_county_pre(layer.feature);
+}
+
+function highlight_county_obs(e) {
+    var layer = e.target;
+    layer.setStyle({
+        weight: 2,
+        color: '#666',
+        dashArray: '',
+        fillOpacity: 0.5
+    });
+    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge)
+        layer.bringToFront();
+    info.update_county_obs(layer.feature);
+}
+////////////////////////////////////////////////////////////////////////////////////////////////
+// RESET HIGHLIGHT
+////////////////////////////////////////////////////////////////////////////////////////////////
+function reset_highlight_year_obs(e) {
+    xlayers['2017 observed state level'].resetStyle(e.target);
+    info.update_year_obs();
+}
+function reset_highlight_year_pre(e) {
+    xlayers['2018 predicted state level'].resetStyle(e.target);
+    info.update_year_pre();
+}
+function reset_highlight_month_obs(e) {
+    xlayers['Average 2019 monthly prediction'].resetStyle(e.target);
+    info.update_month_obs();
+}
+function reset_highlight_month_pre(e) {
+    xlayers['June 2019 prediction state level'].resetStyle(e.target);
+    info.update_month_pre();
+}
+function reset_highlight_county_obs(e) {
+    xlayers['2017 counties observed'].resetStyle(e.target);
+    info.update_county_obs();
+}
+function reset_highlight_county_pre(e) {
+    xlayers['2018 counties predicted'].resetStyle(e.target);
+    info.update_county_pre();
+}
+////////////////////////////////////////////////////////////////////////////////////////////////
+// ON EACH FEATURE
+////////////////////////////////////////////////////////////////////////////////////////////////
+function on_each_feature_year_obs(feature, layer) {
+    layer.on({
+        mouseover: highlight_year_obs,
+        mouseout: reset_highlight_year_obs,
+        click: zoomToFeature
+    });
+}
+
+function on_each_feature_year_pre(feature, layer) {
+    layer.on({
+        mouseover: highlight_year_pre,
+        mouseout: reset_highlight_year_pre,
+        click: zoomToFeature
+    });
+}
+
+function on_each_feature_month_obs(feature, layer) {//duplicate (delete)
+    layer.on({
+        mouseover: highlight_month_obs,
+        mouseout: reset_highlight_month_obs,
+        click: zoomToFeature
+    });
+}
+function on_each_feature_month_pre(feature, layer) {//duplicate (delete)
+    layer.on({
+        mouseover: highlight_month_pre,
+        mouseout: reset_highlight_month_pre,
+        click: zoomToFeature
+    });
+}
+function on_each_feature_county_pre(feature, layer) {
+    layer.on({
+        mouseover: highlight_county_pre,
+        mouseout: reset_highlight_county_pre,
+        click: zoomToFeature
+    });
+}
+
+function on_each_feature_county_obs(feature, layer) {
+    layer.on({
+        mouseover: highlight_county_obs,
+        mouseout: reset_highlight_county_obs,
+        click: zoomToFeature
+    });
+}
+////////////////////////////////////////////////////////////////////////////////////////////////
+// STYLE
+////////////////////////////////////////////////////////////////////////////////////////////////
+function style_year_obs(feature) {
+    var x=feature.id;
+    return {
+        fillColor: getColor(year_obs_dic[x]),
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.5
+    };
+} 
+
+function style_year_pre(feature) {
+    var x=feature.id;
+    return {
+        fillColor: getColor(year_pre_dic[x]),
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.5
+    };
+} 
+
+function style_month_obs(feature) {
+    var x=feature.id;
+    return {
+        fillColor: getColor(month_obs_dic[x]),
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.5
+    };
+} 
+function style_month_pre(feature) {
+    var x=feature.id;
+    return {
+        fillColor: getColor(month_pre_dic[x]),
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.5
+    };
+} 
+
+function style_county_pre(feature) {
+    var x=feature.STATE+feature.COUNTY;
+    return {
+        fillColor: getColor(county_pre_dic[x]),
+        weight: 1,
+        opacity: 1,
+        color: 'white',
+        <!-- strokeWidth:'.1' -->
+        <!-- stroke: false, -->
+        <!-- dashArray: '4', -->
+        fillOpacity: 0.7
+    };
+} 
+
+function style_county_obs(feature) {
+    var x=feature.STATE+feature.COUNTY;
+    return {
+        fillColor: getColor(county_obs_dic[x]),
+        weight: 1,
+        opacity: 1,
+        color: 'white',
+        <!-- stroke: false, -->
+        <!-- dashArray: '3', -->
+        fillOpacity: 0.7
+    };
+} 
+////////////////////////////////////////////////////////////////////////////////////////////////
+// INFO PANEL
+////////////////////////////////////////////////////////////////////////////////////////////////
+var info = L.control();
+
+info.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
+    this.update_county_pre();
+    return this._div;
+};
+
+info.update_year_obs = function (props) {
+    this._div.innerHTML = '<h4>US Overdose Rates</h4>' +  (props ?
+        '<b>' + props.name + '</b><br />' + year_obs_dic[props.id] + ' overdoses <br>/100,000 people per year'
+        : 'Hover over a state');
+};
+
+info.update_year_pre = function (props) {
+    this._div.innerHTML = '<h4>US Overdose Rates</h4>' +  (props ?
+        '<b>' + props.name + '</b><br />' + year_pre_dic[props.id] + ' overdoses <br>/100,000 people per year'
+        : 'Hover over a state');
+};
+
+info.update_month_obs = function (props) {
+    this._div.innerHTML = '<h4>US Overdose Rates</h4>' +  (props ?
+        '<b>' + props.name + '</b><br />' + month_obs_dic[props.id] + ' overdoses <br>/100,000 people per year'
+        : 'Hover over a state');
+};
+
+info.update_month_pre = function (props) {
+    this._div.innerHTML = '<h4>US Overdose Rates</h4>' +  (props ?
+        '<b>' + props.name + '</b><br />' + month_pre_dic[props.id] + ' overdoses <br>/100,000 people per year'
+        : 'Hover over a state');
+};
+
+info.update_county_obs = function (props) {
+    this._div.innerHTML = '<h4>US Overdose Rates</h4>' +  (props ?
+        '<b>' + props.name + '</b><br />' + county_obs_dic[props.STATE+props.COUNTY] + ' overdoses <br>/100,000 people per year' //  var x=feature.STATE+feature.COUNTY;
+        : 'Hover over a county');
+};
+
+info.update_county_pre = function (props) {
+    this._div.innerHTML = '<h4>US Overdose Rates</h4>' +  (props ?
+        '<b>' + props.name + '</b><br />' + county_pre_dic[props.STATE+props.COUNTY] + ' overdoses <br>/100,000 people per year' //  var x=feature.STATE+feature.COUNTY;
+        : 'Hover over a county');
+};
+
+<!-- info.update = function (props,STATES,YEARLY,OBSERVED) { -->
+    <!-- this._div.innerHTML = '<h4>US Overdose Rates</h4>' +  (props ? -->
+        <!-- '<b>' + props.name + '</b><br />' + county_pre_dic[props.STATE+props.COUNTY] + ' overdoses <br>/100,000 people per year'  -->
+        <!-- : 'Hover over a county'); -->
+<!-- }; -->
+
+info.addTo(map);
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+// LEGEND
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+var legend = L.control({position: 'bottomright'});
+legend.onAdd = function (map) {
+    var div = L.DomUtil.create('div', 'info legend'),
+        labels = [];
+    // loop through our density intervals and generate a label with a colored square for each interval
+    for (var i = 0; i < grades.length; i++) {
+        div.innerHTML +=
+            '<i style="background:' + getColor(grades[i] + 1) + '"></i> ' +
+            grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
+    }
+    return div;
+};
+legend.addTo(map);
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+// MISC
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+function zoomToFeature(e) {
+    map.fitBounds(e.target.getBounds());
+}
+
+function round(number, precision) {
+    var factor = Math.pow(10, precision);
+    var tempNumber = number * factor;
+    var roundedTempNumber = Math.round(tempNumber);
+    return roundedTempNumber / factor;
+}
+
+
+<!-- }); -->
+</script>
+</body>
+</html>

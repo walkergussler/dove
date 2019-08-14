@@ -1,0 +1,475 @@
+<html>
+<head>
+<title>cali/delaware issue</title>
+<script type="text/javascript" src="https://cdn.fusioncharts.com/fusioncharts/latest/fusioncharts.js"></script>
+<script type="text/javascript" src="https://cdn.fusioncharts.com/fusioncharts/latest/themes/fusioncharts.theme.fusion.js"></script>
+<script type="text/javascript">
+FusionCharts.ready(function(){
+    var chartObj = new FusionCharts({
+        type: 'maps/usa',
+        renderAt: 'chart-container',
+        width: '100%',
+        height: '100%',
+        dataFormat: 'json',
+        dataSource: 
+        
+        {
+	"chart": {
+		"caption": "Overdose death predictions for US states",
+		"subcaption": "2018",
+		"entityfillhovercolor": "#F8F8E9",
+		"showlabels": "1",
+		"borderthickness": "0.4",
+		"theme": "fusion",
+		"entitytooltext": "<b>$lname</b> has <b>$datavalue</b> overdoses / 100,000 citizen-years"
+	},
+	"colorrange": {
+		"minvalue": "0",
+		"endlabel": "Max",
+		"code": "0000ff",
+		"gradient": "1",
+		"color": [{
+			"maxvalue": "21.0",
+			"code": "ffffff",
+			"displayvalue": "median"
+		}, {
+			"maxvalue": "54",
+			"code": "ff0000"
+		}]
+	},
+	"data": [{
+		"id": "AL",
+		"value": 17.13
+	}, {
+		"id": "AK",
+		"value": 19.87
+	}, {
+		"id": "AZ",
+		"value": 21.84
+	}, {
+		"id": "AR",
+		"value": 14.85
+	}, {
+		"id": "CA",
+		"value": 12.31,
+		"link": "newchart-json-CA"
+	}, {
+		"id": "CO",
+		"value": 18.1
+	}, {
+		"id": "CT",
+		"value": 29.88
+	}, {
+		"id": "DE",
+		"value": 35.14,
+        "link": "newchart-json-DE"
+	}, {
+		"id": "DC",
+		"value": 44.67
+	}, {
+		"id": "FL",
+		"value": 24.25
+	}, {
+		"id": "GA",
+		"value": 14.74
+	}, {
+		"id": "HI",
+		"value": 14.22
+	}, {
+		"id": "ID",
+		"value": 13.75
+	}, {
+		"id": "IL",
+		"value": 21.7
+	}, {
+		"id": "IN",
+		"value": 27.78
+	}, {
+		"id": "IA",
+		"value": 10.84
+	}, {
+		"id": "KS",
+		"value": 11.43
+	}, {
+		"id": "KY",
+		"value": 35.16
+	}, {
+		"id": "LA",
+		"value": 23.65
+	}, {
+		"id": "ME",
+		"value": 31.74
+	}, {
+		"id": "MD",
+		"value": 37.13
+	}, {
+		"id": "MA",
+		"value": 31.6
+	}, {
+		"id": "MI",
+		"value": 27.04
+	}, {
+		"id": "MN",
+		"value": 13.14
+	}, {
+		"id": "MS",
+		"value": 11.86
+	}, {
+		"id": "MO",
+		"value": 22.36
+	}, {
+		"id": "MT",
+		"value": 11.33
+	}, {
+		"id": "NE",
+		"value": 7.92
+	}, {
+		"id": "NV",
+		"value": 22.55
+	}, {
+		"id": "NH",
+		"value": 34.78
+	}, {
+		"id": "NJ",
+		"value": 29.81
+	}, {
+		"id": "NM",
+		"value": 23.61
+	}, {
+		"id": "NY",
+		"value": 19.75
+	}, {
+		"id": "NC",
+		"value": 23.5
+	}, {
+		"id": "ND",
+		"value": 9.0
+	}, {
+		"id": "OH",
+		"value": 43.84
+	}, {
+		"id": "OK",
+		"value": 19.72
+	}, {
+		"id": "OR",
+		"value": 12.79
+	}, {
+		"id": "PA",
+		"value": 42.08
+	}, {
+		"id": "RI",
+		"value": 30.2
+	}, {
+		"id": "SC",
+		"value": 20.06
+	}, {
+		"id": "SD",
+		"value": 8.39
+	}, {
+		"id": "TN",
+		"value": 26.44
+	}, {
+		"id": "TX",
+		"value": 10.56
+	}, {
+		"id": "UT",
+		"value": 20.96
+	}, {
+		"id": "VT",
+		"value": 21.49
+	}, {
+		"id": "VA",
+		"value": 17.79
+	}, {
+		"id": "WA",
+		"value": 15.79
+	}, {
+		"id": "WV",
+		"value": 53.64
+	}, {
+		"id": "WI",
+		"value": 20.31
+	}, {
+		"id": "WY",
+		"value": 11.91
+	}],
+	"linkeddata": [
+    {
+		"id": "CA",
+		"linkedchart": {
+			"chart": {
+				"caption": "Overdose death predictions for California",
+				"subcaption": "2018",
+				"entityfillhovercolor": "#F8F8E9",
+				"showlabels": "1",
+				"borderthickness": "0.4",
+				"theme": "fusion",
+				"entitytooltext": "<b>$lname</b> county has <b>$datavalue</b> overdoses / 100,000 citizen-years"
+			},
+			"colorrange": {
+				"minvalue": "0",
+				"endlabel": "Max",
+				"code": "0000ff",
+				"gradient": "1",
+				"color": [{
+					"maxvalue": "14.0",
+					"code": "ffffff",
+					"displayvalue": "median"
+				}, {
+					"maxvalue": "44",
+					"code": "ff0000"
+				}]
+			},
+			"data": [{
+				"id": "007",
+				"value": 20.06
+			}, {
+				"id": "067",
+				"value": 13.92
+			}, {
+				"id": "041",
+				"value": 14.56
+			}, {
+				"id": "045",
+				"value": 29.54
+			}, {
+				"id": "047",
+				"value": 12.47
+			}, {
+				"id": "065",
+				"value": 17.0
+			}, {
+				"id": "071",
+				"value": 9.13
+			}, {
+				"id": "073",
+				"value": 14.47
+			}, {
+				"id": "075",
+				"value": 20.81
+			}, {
+				"id": "079",
+				"value": 15.17
+			}, {
+				"id": "087",
+				"value": 15.59
+			}, {
+				"id": "091",
+				"value": 13.84
+			}, {
+				"id": "097",
+				"value": 13.68
+			}, {
+				"id": "111",
+				"value": 17.33
+			}, {
+				"id": "019",
+				"value": 12.43
+			}, {
+				"id": "113",
+				"value": 12.32
+			}, {
+				"id": "055",
+				"value": 9.22
+			}, {
+				"id": "057",
+				"value": 18.03
+			}, {
+				"id": "061",
+				"value": 10.88
+			}, {
+				"id": "083",
+				"value": 14.95
+			}, {
+				"id": "093",
+				"value": 13.84
+			}, {
+				"id": "099",
+				"value": 12.41
+			}, {
+				"id": "103",
+				"value": 13.84
+			}, {
+				"id": "115",
+				"value": 20.77
+			}, {
+				"id": "051",
+				"value": 13.84
+			}, {
+				"id": "001",
+				"value": 7.64
+			}, {
+				"id": "003",
+				"value": 13.84
+			}, {
+				"id": "005",
+				"value": 13.84
+			}, {
+				"id": "009",
+				"value": 13.84
+			}, {
+				"id": "011",
+				"value": 13.84
+			}, {
+				"id": "013",
+				"value": 10.02
+			}, {
+				"id": "015",
+				"value": 13.84
+			}, {
+				"id": "017",
+				"value": 16.93
+			}, {
+				"id": "021",
+				"value": 13.84
+			}, {
+				"id": "023",
+				"value": 32.17
+			}, {
+				"id": "025",
+				"value": 11.49
+			}, {
+				"id": "027",
+				"value": 13.84
+			}, {
+				"id": "029",
+				"value": 25.64
+			}, {
+				"id": "031",
+				"value": 9.99
+			}, {
+				"id": "033",
+				"value": 43.58
+			}, {
+				"id": "035",
+				"value": 13.84
+			}, {
+				"id": "037",
+				"value": 9.02
+			}, {
+				"id": "039",
+				"value": 12.11
+			}, {
+				"id": "043",
+				"value": 13.84
+			}, {
+				"id": "049",
+				"value": 13.84
+			}, {
+				"id": "053",
+				"value": 9.82
+			}, {
+				"id": "059",
+				"value": 11.66
+			}, {
+				"id": "063",
+				"value": 13.84
+			}, {
+				"id": "069",
+				"value": 13.84
+			}, {
+				"id": "081",
+				"value": 10.37
+			}, {
+				"id": "085",
+				"value": 8.1
+			}, {
+				"id": "089",
+				"value": 18.9
+			}, {
+				"id": "095",
+				"value": 13.24
+			}, {
+				"id": "101",
+				"value": 10.35
+			}, {
+				"id": "105",
+				"value": 13.84
+			}, {
+				"id": "107",
+				"value": 7.54
+			}, {
+				"id": "109",
+				"value": 23.96
+			}, {
+				"id": "077",
+				"value": 19.45
+			}]
+		}
+	},
+    {
+    	"id": "DE",
+		"linkedchart": {
+			"chart": {
+				"showlegend": "1",
+				"legendallowdrag": "0",
+				"caption": "delaware data",
+				"theme": "fusion"
+			},
+			"colorrange": {
+				"minvalue": "0",
+				"startlabel": "Low",
+				"endlabel": "High",
+				"code": "0000ff",
+				"gradient": "1",
+				"color": [{
+						"maxvalue": "50",
+						"code": "ffffff"
+					},
+					{
+						"maxvalue": "90",
+						"code": "ff0000"
+					}
+				]
+			},
+			"data": [{
+					"id": "001",
+					"value": 10
+				},
+				{
+					"id": "003",
+					"value": 50
+				},
+				{
+					"id": "005",
+					"value": 90
+				}
+			]
+		}
+    }
+    ]
+}
+        
+        ,
+        "events": {
+            "beforeRender": function(e) {
+                e.sender.configureLink({
+                    <!-- "type": "maps/delaware" -->
+                <!-- },  -->
+                <!-- { -->
+                    "type": "maps/california"
+                }, 
+                0);
+            }
+        }
+    });
+    chartObj.render();
+});
+
+    <!-- chartObj.configureLink([ -->
+      <!-- { -->
+        <!-- type: "maps/delaware", -->
+        <!-- type: "maps/california" -->
+      <!-- } -->
+    <!-- ]); -->
+    <!-- chartObj.configureLink([ -->
+      <!-- {type: "maps/california"} -->
+    <!-- ]); -->
+
+
+</script>
+</head>
+<body>
+    <div id="chart-container">FusionCharts XT will load here!</div>
+</body>
+</html>
